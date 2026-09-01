@@ -24,7 +24,7 @@ class UpdateChecker(private val context: Context) {
     companion object {
         private const val TAG = "UpdateChecker"
         private const val VERSION_CHECK_API =
-            "https://kotier.openstars.org/version.json"
+            "https://kotier.wotty.app/version.json"
         private const val TIMEOUT = 15_000
         private const val DOWNLOAD_TIMEOUT = 120_000
     }

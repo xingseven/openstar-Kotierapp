@@ -121,6 +121,40 @@ class SettingsRepository(context: Context) {
         saveNetworkConfigs(jsonArray)
     }
 
+    // ── 在线节点图标 ──
+
+    fun loadNodeDeviceIcons(): MutableMap<String, String> {
+        val raw = prefs.getString("node_device_icons", null) ?: return mutableMapOf()
+        return try {
+            val json = JSONObject(raw)
+            val result = mutableMapOf<String, String>()
+            val keys = json.keys()
+            while (keys.hasNext()) {
+                val key = keys.next()
+                val value = json.optString(key, "").trim()
+                if (key.isNotBlank() && value.isNotBlank()) {
+                    result[key] = value
+                }
+            }
+            result
+        } catch (_: Exception) {
+            mutableMapOf()
+        }
+    }
+
+    fun saveNodeDeviceIcon(nodeKey: String, deviceType: String) {
+        val normalizedKey = nodeKey.trim()
+        val normalizedType = deviceType.trim()
+        if (normalizedKey.isBlank() || normalizedType.isBlank()) return
+
+        val icons = loadNodeDeviceIcons()
+        icons[normalizedKey] = normalizedType
+        val json = JSONObject().apply {
+            icons.forEach { (key, value) -> put(key, value) }
+        }
+        prefs.edit().putString("node_device_icons", json.toString()).apply()
+    }
+
     fun loadNetworkConfigsJson(): JSONArray? {
         val json = prefs.getString("network_configs", null) ?: return null
         return try { JSONArray(json) } catch (_: Exception) { null }

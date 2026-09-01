@@ -102,11 +102,18 @@ fun SettingsPage(onNavigateToLog: (() -> Unit)? = null) {
                 }
             },
         ) {
-            Text(
-                info.releaseNotes.ifEmpty { "暂无更新说明" },
-                fontSize = 13.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 260.dp)
+                    .verticalScroll(rememberScrollState()),
+            ) {
+                Text(
+                    info.releaseNotes.ifEmpty { "暂无更新说明" },
+                    fontSize = 13.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
     }
 
@@ -181,12 +188,12 @@ fun SettingsPage(onNavigateToLog: (() -> Unit)? = null) {
                 HorizontalDivider()
                 ListItem(
                     headlineContent = { Text("GitHub 项目", fontSize = 13.sp) },
-                    supportingContent = { Text("github.com/xingseven/openstar-kotierapp", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) },
+                    supportingContent = { Text("github.com/sevencnup/wotty-kotierapp", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) },
                     trailingContent = { AppIcon(AppIcons.ChevronRight, contentDescription = null) },
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable {
-                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/xingseven/openstar-kotierapp"))
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/sevencnup/wotty-kotierapp"))
                             context.startActivity(intent)
                         }
                 )
@@ -205,12 +212,12 @@ fun SettingsPage(onNavigateToLog: (() -> Unit)? = null) {
                 HorizontalDivider()
                 ListItem(
                     headlineContent = { Text("项目网站", fontSize = 13.sp) },
-                    supportingContent = { Text("kotier.openstars.org", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) },
+                    supportingContent = { Text("kotier.wotty.app", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) },
                     trailingContent = { AppIcon(AppIcons.ChevronRight, contentDescription = null) },
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable {
-                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://kotier.openstars.org"))
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://kotier.wotty.app"))
                             context.startActivity(intent)
                         }
                 )

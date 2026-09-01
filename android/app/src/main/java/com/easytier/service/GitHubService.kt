@@ -16,7 +16,7 @@ data class Contributor(
 
 object GitHubService {
     private const val TAG = "GitHubService"
-    private const val CONTRIBUTORS_URL = "https://api.github.com/repos/xingseven/openstar-vetierapp/contributors"
+    private const val CONTRIBUTORS_URL = "https://api.github.com/repos/sevencnup/wotty-kotierapp/contributors"
 
     suspend fun fetchContributors(): List<Contributor> = withContext(Dispatchers.IO) {
         try {

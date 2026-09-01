@@ -12,7 +12,7 @@
 
 - 当前主应用是 Android 版 `kotier`
 - 应用包名：`com.easytier.app.split`
-- 当前版本：`4.2.44 (4062)`
+- 当前版本：`4.2.46 (4064)`
 - 当前默认只构建 `arm64-v8a`
 - GitHub Release 通过标签 `v*` 触发自动打包
 
@@ -129,6 +129,6 @@ python .\install_apk.py .\android\app\build\outputs\apk\release\kotier-v4.2.44-4
 
 ## 相关参考
 
-- 仓库地址：`https://github.com/xingseven/openstar-kotierapp`
-- 版本记录：[版本记录.md](/F:/1python/xiangmu/openstar-kotierapp/版本记录.md)
-- Android 前端说明：[FRONTEND_DEVELOPMENT_GUIDE.md](/F:/1python/xiangmu/openstar-kotierapp/android/FRONTEND_DEVELOPMENT_GUIDE.md)
+- 仓库地址：`https://github.com/sevencnup/wotty-kotierapp`
+- 版本记录：[版本记录.md](/F:/1python/xiangmu/wotty-kotierapp/版本记录.md)
+- Android 前端说明：[FRONTEND_DEVELOPMENT_GUIDE.md](/F:/1python/xiangmu/wotty-kotierapp/android/FRONTEND_DEVELOPMENT_GUIDE.md)

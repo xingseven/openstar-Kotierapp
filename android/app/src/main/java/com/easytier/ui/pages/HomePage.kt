@@ -135,11 +135,13 @@ private val navItems = listOf(
 private data class DeviceIconOption(
     val type: String,
     val label: String,
-    val lightIconRes: Int,
-    val darkIconRes: Int,
+    val lightIconRes: Int? = null,
+    val darkIconRes: Int? = null,
+    val vectorIcon: ImageVector? = null,
 )
 
 private val deviceIconOptions = listOf(
+    DeviceIconOption(type = "wifi", label = "WiFi", vectorIcon = Icons.Rounded.Wifi),
     DeviceIconOption(type = "phone", label = "手机", lightIconRes = R.drawable.phone_b, darkIconRes = R.drawable.phone_w),
     DeviceIconOption(type = "desktop", label = "台式机", lightIconRes = R.drawable.computer_b, darkIconRes = R.drawable.computer_w),
     DeviceIconOption(type = "laptop", label = "笔记本", lightIconRes = R.drawable.laptop_b, darkIconRes = R.drawable.laptop_w),
@@ -147,15 +149,38 @@ private val deviceIconOptions = listOf(
     DeviceIconOption(type = "nas", label = "NAS", lightIconRes = R.drawable.nas_b, darkIconRes = R.drawable.nas_w),
 )
 
-private fun resolveDeviceIconRes(deviceType: String, isDarkTheme: Boolean): Int {
+@Composable
+private fun DeviceIcon(
+    deviceType: String,
+    isDarkTheme: Boolean,
+    contentDescription: String?,
+    modifier: Modifier = Modifier.size(16.dp),
+) {
     val option = deviceIconOptions.firstOrNull { it.type == deviceType }
-    return when {
-        option == null && isDarkTheme -> R.drawable.computer_w
-        option == null -> R.drawable.computer_b
-        isDarkTheme -> option.darkIconRes
-        else -> option.lightIconRes
+    if (option?.vectorIcon != null) {
+        Icon(
+            imageVector = option.vectorIcon,
+            contentDescription = contentDescription,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = modifier,
+        )
+    } else {
+        val iconRes = when {
+            option == null && isDarkTheme -> R.drawable.computer_w
+            option == null -> R.drawable.computer_b
+            isDarkTheme -> option.darkIconRes ?: R.drawable.computer_w
+            else -> option.lightIconRes ?: R.drawable.computer_b
+        }
+        Image(
+            painter = painterResource(id = iconRes),
+            contentDescription = contentDescription,
+            modifier = modifier,
+        )
     }
 }
+
+private fun nodeIconKey(node: NodeInfo): String =
+    node.hostname.trim().ifBlank { node.virtualIp.trim() }
 
 private fun NetworkConfig.isPlaceholderConfig(): Boolean {
     return networkLabel.isBlank() &&
@@ -299,6 +324,7 @@ private fun DashboardScreen(
 
     var configs by remember { mutableStateOf(sanitizeDashboardConfigs(repo.loadNetworkConfigs())) }
     var nodes by remember { mutableStateOf<List<NodeInfo>>(emptyList()) }
+    var nodeIconOverrides by remember { mutableStateOf(repo.loadNodeDeviceIcons()) }
     var showAddNodeDialog by remember { mutableStateOf(false) }
     var showNetworkConfigDialog by remember { mutableStateOf(false) }
     var editingConfigInstanceName by remember { mutableStateOf<String?>(null) }
@@ -580,10 +606,11 @@ private fun DashboardScreen(
                         modifier = Modifier.heightIn(min = 34.dp),
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Image(
-                                painter = painterResource(id = resolveDeviceIconRes(option.type, isDarkTheme)),
+                            DeviceIcon(
+                                deviceType = option.type,
+                                isDarkTheme = isDarkTheme,
                                 contentDescription = option.label,
-                                modifier = Modifier.size(14.dp)
+                                modifier = Modifier.size(14.dp),
                             )
                             Text(option.label, fontSize = 10.sp)
                         }
@@ -1263,7 +1290,20 @@ private fun DashboardScreen(
                             )
                         } else {
                             nodes.forEachIndexed { index, item ->
-                                DeviceRow(item)
+                                val key = nodeIconKey(item)
+                                DeviceRow(
+                                    node = item,
+                                    iconType = nodeIconOverrides[key] ?: "wifi",
+                                    isDarkTheme = isDarkTheme,
+                                    onIconSelected = { selectedType ->
+                                        if (key.isNotBlank()) {
+                                            nodeIconOverrides = nodeIconOverrides.toMutableMap().apply {
+                                                this[key] = selectedType
+                                            }
+                                            repo.saveNodeDeviceIcon(key, selectedType)
+                                        }
+                                    },
+                                )
                                 if (index < nodes.lastIndex) {
                                     HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.35f))
                                 }
@@ -1338,7 +1378,13 @@ private fun MetricActionItem(
 }
 
 @Composable
-private fun DeviceRow(node: NodeInfo) {
+private fun DeviceRow(
+    node: NodeInfo,
+    iconType: String,
+    isDarkTheme: Boolean,
+    onIconSelected: (String) -> Unit,
+) {
+    var menuExpanded by remember { mutableStateOf(false) }
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -1358,10 +1404,10 @@ private fun DeviceRow(node: NodeInfo) {
                 ),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(
-                imageVector = Icons.Rounded.Wifi,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
+            DeviceIcon(
+                deviceType = iconType,
+                isDarkTheme = isDarkTheme,
+                contentDescription = "设备图标",
                 modifier = Modifier.size(16.dp),
             )
         }
@@ -1391,6 +1437,46 @@ private fun DeviceRow(node: NodeInfo) {
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
+        }
+        Box {
+            IconButton(
+                onClick = { menuExpanded = true },
+                modifier = Modifier.size(48.dp),
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.MoreVert,
+                    contentDescription = "设置${if (node.isLocal) "本机" else "在线节点"}设备图标",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            DropdownMenu(
+                expanded = menuExpanded,
+                onDismissRequest = { menuExpanded = false },
+                modifier = Modifier.background(MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(8.dp)),
+            ) {
+                deviceIconOptions.forEach { option ->
+                    DropdownMenuItem(
+                        text = {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                DeviceIcon(
+                                    deviceType = option.type,
+                                    isDarkTheme = isDarkTheme,
+                                    contentDescription = option.label,
+                                    modifier = Modifier.size(18.dp),
+                                )
+                                Text(option.label)
+                            }
+                        },
+                        onClick = {
+                            menuExpanded = false
+                            onIconSelected(option.type)
+                        },
+                    )
+                }
+            }
         }
         Text(
             text = if (node.isLocal) "本机" else "在线",
@@ -1426,8 +1512,9 @@ private fun ConfigRow(
                 .background(MaterialTheme.colorScheme.surfaceVariant),
             contentAlignment = Alignment.Center,
         ) {
-            Image(
-                painter = painterResource(id = resolveDeviceIconRes(config.deviceType, isDarkTheme)),
+            DeviceIcon(
+                deviceType = config.deviceType,
+                isDarkTheme = isDarkTheme,
                 contentDescription = "设备图标",
                 modifier = Modifier.size(16.dp),
             )
