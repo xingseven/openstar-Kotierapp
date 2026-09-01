@@ -13,3 +13,4 @@ services:
       retries: 3
     volumes:
       - ./server.js:/app/server.js:ro
+      - ./data:/data
