@@ -17,6 +17,7 @@ function versionResponse(value, req) {
   const origin = getPublicOrigin(req);
   return {
     latest_version: value.latest_version,
+    latest_version_code: value.latest_version_code,
     download_url: `${origin}/download/${encodeURIComponent(value.asset_name)}`,
     source_download_url: value.source_download_url,
     release_notes: value.release_notes,
@@ -81,14 +82,27 @@ function getPublicOrigin(req) {
 
 function getLatestReleaseInfo() {
   return fetchLatestRelease().then((release) => {
-    const apk = (release.assets || []).find((asset) =>
+    const apkAssets = (release.assets || []).filter((asset) =>
       typeof asset.name === 'string' && asset.name.toLowerCase().endsWith('.apk')
     );
+    const apk = apkAssets
+      .map((asset) => ({ asset, versionCode: extractVersionCode(asset.name) }))
+      .sort((a, b) => b.versionCode - a.versionCode)[0]?.asset;
     if (!release.tag_name || !apk?.browser_download_url) {
       throw new Error('Latest GitHub Release has no APK asset');
     }
-    return { release, apk, filename: safeAssetName(apk.name) };
+    return {
+      release,
+      apk,
+      filename: safeAssetName(apk.name),
+      versionCode: extractVersionCode(apk.name),
+    };
   });
+}
+
+function extractVersionCode(name) {
+  const match = /-(\d+)-release\.apk$/i.exec(name);
+  return match ? Number(match[1]) : -1;
 }
 
 function requestFollowingRedirects(url, redirectCount = 0) {
@@ -175,11 +189,12 @@ async function ensureCached(apk) {
 }
 
 async function buildVersionInfo(req) {
-  const { release, apk, filename } = await getLatestReleaseInfo();
+  const { release, apk, filename, versionCode } = await getLatestReleaseInfo();
   await ensureCached(apk);
   const origin = getPublicOrigin(req);
   return {
     latest_version: String(release.tag_name).replace(/^v/i, ''),
+    latest_version_code: versionCode,
     download_url: `${origin}/download/${encodeURIComponent(filename)}`,
     source_download_url: apk.browser_download_url,
     release_notes: typeof release.body === 'string' ? release.body : '',

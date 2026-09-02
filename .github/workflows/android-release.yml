@@ -33,8 +33,20 @@ jobs:
         working-directory: ./android
         run: echo "sdk.dir=$ANDROID_HOME" > local.properties
 
+      - name: Decode release keystore
+        env:
+          KOTIER_RELEASE_KEYSTORE_BASE64: ${{ secrets.KOTIER_RELEASE_KEYSTORE_BASE64 }}
+        run: |
+          test -n "$KOTIER_RELEASE_KEYSTORE_BASE64"
+          echo "$KOTIER_RELEASE_KEYSTORE_BASE64" | base64 --decode > android/kotier-release.jks
+
       - name: Build Release APK
         working-directory: ./android
+        env:
+          KOTIER_RELEASE_STORE_FILE: kotier-release.jks
+          KOTIER_RELEASE_STORE_PASSWORD: ${{ secrets.KOTIER_RELEASE_STORE_PASSWORD }}
+          KOTIER_RELEASE_KEY_ALIAS: ${{ secrets.KOTIER_RELEASE_KEY_ALIAS }}
+          KOTIER_RELEASE_KEY_PASSWORD: ${{ secrets.KOTIER_RELEASE_KEY_PASSWORD }}
         run: |
           chmod +x gradlew
           ./gradlew assembleRelease --no-daemon

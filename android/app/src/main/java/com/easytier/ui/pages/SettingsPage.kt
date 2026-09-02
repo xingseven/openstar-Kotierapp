@@ -113,6 +113,16 @@ fun SettingsPage(onNavigateToLog: (() -> Unit)? = null) {
                     fontSize = 13.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                Spacer(Modifier.height(4.dp))
+                TextButton(
+                    onClick = {
+                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(info.downloadUrl))
+                        context.startActivity(intent)
+                    },
+                    contentPadding = PaddingValues(horizontal = 0.dp, vertical = 2.dp),
+                ) {
+                    Text("浏览器下载安装包", fontSize = 13.sp)
+                }
             }
         }
     }

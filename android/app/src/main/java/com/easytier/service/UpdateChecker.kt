@@ -15,6 +15,7 @@ import java.net.URL
 
 data class UpdateInfo(
     val latestVersion: String,
+    val latestVersionCode: Int?,
     val downloadUrl: String,
     val releaseNotes: String,
 )
@@ -25,6 +26,8 @@ class UpdateChecker(private val context: Context) {
         private const val TAG = "UpdateChecker"
         private const val VERSION_CHECK_API =
             "https://kotier.wotty.app/version.json"
+        private const val MANUAL_DOWNLOAD_NOTE =
+            "如果遇到签名不一致，请手动下载安装包并更新。"
         private const val TIMEOUT = 15_000
         private const val DOWNLOAD_TIMEOUT = 120_000
     }
@@ -60,18 +63,36 @@ class UpdateChecker(private val context: Context) {
             val downloadUrl = json.optString("download_url", "").takeIf { it.isNotBlank() }
                 ?: return@withContext Result.Unavailable("未找到下载链接")
 
+            val latestVersionCode = json.optInt("latest_version_code", -1).takeIf { it >= 0 }
             val currentVersion = com.easytier.BuildConfig.VERSION_NAME
-            Log.d(TAG, "最新版本: $latestVersion, 当前版本: $currentVersion, 下载地址: $downloadUrl")
+            val currentVersionCode = com.easytier.BuildConfig.VERSION_CODE
+            Log.d(
+                TAG,
+                "最新版本: $latestVersion ($latestVersionCode), 当前版本: $currentVersion ($currentVersionCode), 下载地址: $downloadUrl"
+            )
 
-            if (compareVersions(latestVersion, currentVersion) <= 0) {
+            val versionComparison = compareVersions(latestVersion, currentVersion)
+            val isSameVersionCodeNewer =
+                versionComparison == 0 && latestVersionCode != null && latestVersionCode > currentVersionCode
+            if (versionComparison < 0 || (versionComparison == 0 && !isSameVersionCodeNewer)) {
                 return@withContext Result.Unavailable("已是最新版本 ($currentVersion)")
             }
 
-            val releaseNotes = sanitizeReleaseNotes(json.optString("release_notes", "")).take(500)
+            val releaseNotes = buildString {
+                val notes = sanitizeReleaseNotes(json.optString("release_notes", ""))
+                if (notes.isNotEmpty()) {
+                    append(notes.take(500))
+                    append("\n\n")
+                }
+                if (!notes.contains(MANUAL_DOWNLOAD_NOTE)) {
+                    append(MANUAL_DOWNLOAD_NOTE)
+                }
+            }
 
             Result.Available(
                 UpdateInfo(
                     latestVersion = latestVersion,
+                    latestVersionCode = latestVersionCode,
                     downloadUrl = downloadUrl,
                     releaseNotes = releaseNotes,
                 )

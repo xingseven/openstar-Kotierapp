@@ -1,9 +1,34 @@
+import java.io.FileInputStream
+import java.util.Properties
+
+val signingPropertiesFile = rootProject.file("keystore.properties")
+val signingProperties = Properties().apply {
+    if (signingPropertiesFile.isFile) {
+        FileInputStream(signingPropertiesFile).use(::load)
+    }
+}
+
+fun signingValue(propertyName: String, environmentName: String): String? =
+    System.getenv(environmentName)?.takeIf { it.isNotBlank() }
+        ?: signingProperties.getProperty(propertyName)?.takeIf { it.isNotBlank() }
+
+val releaseStoreFile = signingValue("storeFile", "KOTIER_RELEASE_STORE_FILE")
+val releaseStorePassword = signingValue("storePassword", "KOTIER_RELEASE_STORE_PASSWORD")
+val releaseKeyAlias = signingValue("keyAlias", "KOTIER_RELEASE_KEY_ALIAS")
+val releaseKeyPassword = signingValue("keyPassword", "KOTIER_RELEASE_KEY_PASSWORD")
+val hasReleaseSigning = listOf(
+    releaseStoreFile,
+    releaseStorePassword,
+    releaseKeyAlias,
+    releaseKeyPassword,
+).all { it != null }
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
 }
 
-val appVersionCode = 4064
+val appVersionCode = 4065
 val appVersionName = "4.2.46"
 
 base {
@@ -51,7 +76,17 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            signingConfig = signingConfigs.getByName("debug")
+            if (!hasReleaseSigning) {
+                throw GradleException(
+                    "Release signing is not configured. Provide android/keystore.properties or KOTIER_RELEASE_* environment variables."
+                )
+            }
+            signingConfig = signingConfigs.create("release").apply {
+                storeFile = rootProject.file(releaseStoreFile!!)
+                storePassword = releaseStorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
+            }
         }
     }
 }
