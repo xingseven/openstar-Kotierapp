@@ -67,7 +67,7 @@ class UpdateChecker(private val context: Context) {
                 return@withContext Result.Unavailable("已是最新版本 ($currentVersion)")
             }
 
-            val releaseNotes = json.optString("release_notes", "").take(500)
+            val releaseNotes = sanitizeReleaseNotes(json.optString("release_notes", "")).take(500)
 
             Result.Available(
                 UpdateInfo(
@@ -150,6 +150,19 @@ class UpdateChecker(private val context: Context) {
             Log.e(TAG, "启动安装界面失败", e)
         }
     }
+
+    private fun sanitizeReleaseNotes(value: String): String =
+        value
+            .lineSequence()
+            .filterNot { line ->
+                line.trim()
+                    .removePrefix("-")
+                    .trimStart()
+                    .let { it.startsWith("安装包：") || it.startsWith("安装包:") }
+            }
+            .joinToString("\n")
+            .replace(Regex("\n{3,}"), "\n\n")
+            .trim()
 
     private fun compareVersions(v1: String, v2: String): Int {
         val parts1 = v1.split(".").map { it.toIntOrNull() ?: 0 }
