@@ -201,6 +201,22 @@ async function buildVersionInfo(req) {
   };
 }
 
+async function getCurrentAssetName() {
+  const now = Date.now();
+  if (cache && now - cache.time < CACHE_TTL_MS) {
+    return cache.value.asset_name;
+  }
+  try {
+    const { filename } = await getLatestReleaseInfo();
+    return filename;
+  } catch (error) {
+    if (cache) {
+      return cache.value.asset_name;
+    }
+    throw error;
+  }
+}
+
 async function prewarmLatest() {
   const { apk, filename } = await getLatestReleaseInfo();
   await ensureCached(apk);
@@ -239,6 +255,17 @@ function parseRange(rangeHeader, size) {
 async function handleDownload(req, res, filename) {
   if (!/^[A-Za-z0-9._-]+\.apk$/i.test(filename)) {
     sendJson(res, 404, { error: 'Not Found' });
+    return;
+  }
+  try {
+    const currentFilename = await getCurrentAssetName();
+    if (filename !== currentFilename) {
+      sendJson(res, 404, { error: 'APK Not Found' });
+      return;
+    }
+  } catch (error) {
+    console.error(error.message);
+    sendJson(res, 503, { error: '暂时无法确认 APK 版本' });
     return;
   }
   let filePath = path.join(CACHE_DIR, filename);
