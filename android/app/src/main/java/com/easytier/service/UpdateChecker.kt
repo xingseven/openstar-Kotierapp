@@ -81,7 +81,7 @@ class UpdateChecker(private val context: Context) {
             val releaseNotes = buildString {
                 val notes = sanitizeReleaseNotes(json.optString("release_notes", ""))
                 if (notes.isNotEmpty()) {
-                    append(notes.take(500))
+                    append(notes)
                     append("\n\n")
                 }
                 if (!notes.contains(MANUAL_DOWNLOAD_NOTE)) {
@@ -108,7 +108,8 @@ class UpdateChecker(private val context: Context) {
             try {
                 val dir = File(context.externalCacheDir, "updates")
                 dir.mkdirs()
-                val file = File(dir, "kotier-v${info.latestVersion}.apk")
+                val versionCodeSuffix = info.latestVersionCode?.let { "-$it" } ?: ""
+                val file = File(dir, "kotier-v${info.latestVersion}${versionCodeSuffix}.apk")
                 // 已下载过直接安装
                 if (file.exists()) {
                     installApk(file)

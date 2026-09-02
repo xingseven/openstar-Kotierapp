@@ -9,6 +9,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.ClickableText
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -16,6 +18,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.height
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.easytier.BuildConfig
@@ -83,6 +89,14 @@ fun SettingsPage(onNavigateToLog: (() -> Unit)? = null) {
     // 更新对话框
     if (showUpdateDialog && updateInfo != null) {
         val info = updateInfo!!
+        val openDownloadUrl = {
+            try {
+                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(info.downloadUrl))
+                context.startActivity(intent)
+            } catch (e: Exception) {
+                Toast.makeText(context, "无法打开浏览器下载链接", Toast.LENGTH_LONG).show()
+            }
+        }
         AppDialog(
             title = "发现新版本 v${info.latestVersion}",
             onDismissRequest = { showUpdateDialog = false },
@@ -108,20 +122,44 @@ fun SettingsPage(onNavigateToLog: (() -> Unit)? = null) {
                     .heightIn(max = 260.dp)
                     .verticalScroll(rememberScrollState()),
             ) {
+                UpdateNotesText(
+                    text = info.releaseNotes.ifEmpty { "暂无更新说明" },
+                    onOpenUrl = { url ->
+                        try {
+                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                        } catch (e: Exception) {
+                            Toast.makeText(context, "无法打开链接", Toast.LENGTH_LONG).show()
+                        }
+                    },
+                )
+                Spacer(Modifier.height(2.dp))
+                OutlinedButton(
+                    onClick = openDownloadUrl,
+                    modifier = Modifier.fillMaxWidth(),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 7.dp),
+                ) {
+                    Text("点击浏览器下载 APK", fontSize = 13.sp)
+                }
                 Text(
-                    info.releaseNotes.ifEmpty { "暂无更新说明" },
-                    fontSize = 13.sp,
+                    text = "下载地址（点击可打开）",
+                    fontSize = 11.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                Spacer(Modifier.height(4.dp))
-                TextButton(
-                    onClick = {
-                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(info.downloadUrl))
-                        context.startActivity(intent)
-                    },
-                    contentPadding = PaddingValues(horizontal = 0.dp, vertical = 2.dp),
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(onClick = openDownloadUrl),
+                    shape = RoundedCornerShape(7.dp),
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
                 ) {
-                    Text("浏览器下载安装包", fontSize = 13.sp)
+                    SelectionContainer {
+                        Text(
+                            text = info.downloadUrl.replace("/", "/\u200B"),
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 7.dp),
+                            fontSize = 11.sp,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                    }
                 }
             }
         }
@@ -316,6 +354,51 @@ fun SettingsPage(onNavigateToLog: (() -> Unit)? = null) {
 
             Spacer(Modifier.height(20.dp))
         }
+    }
+}
+
+private const val UPDATE_URL_ANNOTATION = "kotier-update-url"
+private val UPDATE_URL_PATTERN =
+    Regex("""\[([^]]+)\]\((https?://[^)\s]+)\)|https?://[^\s)]+""")
+
+@Composable
+private fun UpdateNotesText(text: String, onOpenUrl: (String) -> Unit) {
+    val linkColor = MaterialTheme.colorScheme.primary
+    val annotated = buildAnnotatedString {
+        var cursor = 0
+        UPDATE_URL_PATTERN.findAll(text).forEach { match ->
+            append(text.substring(cursor, match.range.first))
+            val markdownUrl = match.groups[2]?.value
+            val url = markdownUrl ?: match.value.trimEnd('.', ',', '。', '，', '；', ';')
+            val label = match.groups[1]?.value ?: url
+            pushStringAnnotation(UPDATE_URL_ANNOTATION, url)
+            withStyle(SpanStyle(color = linkColor, textDecoration = TextDecoration.Underline)) {
+                append(label)
+            }
+            pop()
+            if (markdownUrl == null && match.value.length > url.length) {
+                append(match.value.removePrefix(url))
+            }
+            cursor = match.range.last + 1
+        }
+        append(text.substring(cursor))
+    }
+
+    SelectionContainer {
+        ClickableText(
+            text = annotated,
+            modifier = Modifier.fillMaxWidth(),
+            style = LocalTextStyle.current.copy(
+                fontSize = 13.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            ),
+            onClick = { offset ->
+                annotated
+                    .getStringAnnotations(UPDATE_URL_ANNOTATION, offset, offset)
+                    .firstOrNull()
+                    ?.let { onOpenUrl(it.item) }
+            },
+        )
     }
 }
 

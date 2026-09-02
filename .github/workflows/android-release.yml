@@ -63,4 +63,5 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: android/app/build/outputs/apk/release/*-release.apk
-          generate_release_notes: true
+          generate_release_notes: false
+          body_path: RELEASE_NOTES.md
